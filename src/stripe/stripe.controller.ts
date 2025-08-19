@@ -35,9 +35,9 @@ export class StripeController {
     description: 'Payment intent created successfully',
   })
   createPaymentIntent(@Body() dto: CreatePaymentIntentDto) {
-    const {amount, currency, paymentCategroy, paymentId, description, userId} = dto
+    const {amount, currency, paymentCategory, paymentId, description, userId} = dto
     return this.stripeService.createPaymentIntent(amount,currency, {
-      paymentId, paymentCategroy, userId
+      paymentId, paymentCategory, userId
     }, description);
   }
 

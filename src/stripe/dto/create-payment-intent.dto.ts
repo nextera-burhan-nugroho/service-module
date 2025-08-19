@@ -15,7 +15,7 @@ export class CreatePaymentIntentDto {
 
   @IsString()
   @IsNotEmpty()
-  paymentCategroy: string;
+  paymentCategory: string;
 
   @IsOptional()
   @IsString()
