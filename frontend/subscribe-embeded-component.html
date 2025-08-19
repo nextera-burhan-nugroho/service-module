@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stripe Embedded Component Demo</title>
+  <script src="https://js.stripe.com/basil/stripe.js"></script>
+
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+
+    #checkout-component {
+      padding: 20px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      max-width: 500px;
+    }
+
+    button {
+      margin-top: 15px;
+      padding: 10px 20px;
+    }
+
+    #status {
+      margin-top: 15px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <h2>Stripe Embedded Component Subscription</h2>
+  <div id="checkout-container"></div>
+  <div id="payment-element"></div>
+  <button id="pay-button">Subscribe</button>
+  <div id="confirm-errors"></div>
+
+  <script>
+    const stripe = Stripe('pk_test_51RvWHkAECEHGAgkMffEDYFvQSAwvtz5tRGlcvp74Zu3lIqnZ7XPVBHXR9at8ZWLkpVGLZ9zKqtqPVenIiXzZFPzV00HfzCWbCE'); // your publishable key
+
+    const fetchClientSecret = async () => {
+      const res =  await fetch("http://localhost:3000/stripe/subscribe-embedded-component", {
+        method: "POST",
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: 'user-123',
+          email: 'test@example.com',
+          productIdInDb: 'prod-db-001',
+          productName: 'Pro Plan',
+          priceIdInDb: 'price-db-001',
+          amount: 200,
+          currency: 'usd',
+          interval: 'month',
+          subscriptionIdInDb: 'sub-db-001'
+        }),
+      })
+      const data = await res.json();
+      console.log('Fetched client secret:', data);
+      return data.clientSecret;
+    };
+
+    let checkout;
+
+    stripe.initCheckout({ fetchClientSecret }).then((_checkout) => {
+      checkout = _checkout;
+
+      const checkoutContainer = document.getElementById('checkout-container');
+      checkoutContainer.append(JSON.stringify(checkout.lineItems, null, 2));
+      checkoutContainer.append(document.createElement('br'));
+      checkoutContainer.append(`Total: ${checkout.session().total.total.amount}`);
+
+      const paymentElement = checkout.createPaymentElement();
+      paymentElement.mount('#payment-element');
+
+      document.getElementById('pay-button').addEventListener('click', () => {
+      const errors = document.getElementById('confirm-errors');
+      errors.textContent = '';
+
+      checkout.confirm().then((result) => {
+        if (result.type === 'error') {
+          errors.textContent = result.error.message;
+        } else {
+          alert('Subscription successful!');
+        }
+      });
+    });
+    });
+
+
+  </script>
+</body>
+
+</html>

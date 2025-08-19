@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stripe Payment Demo - All Methods</title>
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+    .form-group {
+      margin-bottom: 10px;
+    }
+    #payment-element {
+      margin-bottom: 20px;
+    }
+    button {
+      padding: 10px 20px;
+    }
+    #status {
+      margin-top: 15px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Stripe Payment Test (All Methods)</h1>
+
+  <div class="form-group">
+    <label>Amount (USD cents):</label>
+    <input type="number" id="amount" value="5000" />
+  </div>
+
+  <div id="payment-element"></div>
+
+  <button id="pay-btn">Pay Now</button>
+
+  <div id="status"></div>
+
+  <script>
+    const stripe = Stripe('pk_test_51RvWHkAECEHGAgkMffEDYFvQSAwvtz5tRGlcvp74Zu3lIqnZ7XPVBHXR9at8ZWLkpVGLZ9zKqtqPVenIiXzZFPzV00HfzCWbCE'); // Replace with your publishable key
+    let elements;
+    let clientSecret;
+
+    async function initialize() {
+      const amount = document.getElementById('amount').value;
+
+      // 1. Create payment intent from backend
+      const res = await fetch('http://localhost:3000/stripe/payment-intent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: parseInt(amount), currency: 'usd', paymentId: 'ID123', paymentCategroy: 'hotel', userId: 'c07dc56a-0980-4e22-9a12-1ca5042f59fd', description: 'payment for hotel' })
+      });
+
+      const data = await res.json();
+      if (!data.client_secret) {
+        throw new Error('No client secret from backend');
+      }
+
+      clientSecret = data.client_secret;
+
+      // 2. Create Payment Element
+      elements = stripe.elements({ clientSecret });
+      const paymentElement = elements.create("payment");
+      paymentElement.mount("#payment-element");
+    }
+
+    document.getElementById('pay-btn').addEventListener('click', async () => {
+      document.getElementById('status').textContent = 'Processing payment...';
+
+      const { error } = await stripe.confirmPayment({
+        elements,
+        // confirmParams: {
+        //   return_url: "http://localhost:3000/payment-success", // Change to your success page
+        // },
+      });
+
+      if (error) {
+        document.getElementById('status').textContent = '❌ Payment failed: ' + error.message;
+      } else {
+        document.getElementById('status').textContent = '✅ Payment completed!';
+      }
+    });
+
+    initialize().catch(err => {
+      document.getElementById('status').textContent = 'Error: ' + err.message;
+    });
+  </script>
+</body>
+
+</html>

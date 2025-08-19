@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stripe Subscription Demo</title>
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+
+    .form-group {
+      margin-bottom: 10px;
+    }
+
+    #card-element {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      padding: 10px 20px;
+    }
+
+    #status {
+      margin-top: 15px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="checkout">
+    <!-- Checkout inserts the payment form here -->
+  </div>
+
+  <script>
+    const stripe = Stripe('pk_test_51RvWHkAECEHGAgkMffEDYFvQSAwvtz5tRGlcvp74Zu3lIqnZ7XPVBHXR9at8ZWLkpVGLZ9zKqtqPVenIiXzZFPzV00HfzCWbCE'); // your publishable key
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      const fetchClientSecret = async () => {
+        const response = await fetch("http://localhost:3000/stripe/subscribe-embeded-form", {
+          method: "POST",
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId: 'user-123',                // Replace with your app's user ID
+            email: 'test@example.com',
+            productIdInDb: 'prod-db-001',      // Your internal DB product ID
+            productName: 'Pro Plan',
+            priceIdInDb: 'price-db-001',       // Your internal DB price ID
+            amount: 200,
+            currency: 'usd',
+            interval: 'month',
+            subscriptionIdInDb: 'sub-db-001'
+          }),
+        });
+        const { clientSecret } = await response.json();
+        return clientSecret
+      };
+
+      // Initialize Checkout
+      const checkout = await stripe.initEmbeddedCheckout({
+        fetchClientSecret,
+      });
+
+      // Mount Checkout
+      checkout.mount('#checkout');
+    })
+  </script>
+
+</body>
+
+</html>

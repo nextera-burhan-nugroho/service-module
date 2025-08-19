@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stripe Embedded Component Demo</title>
+  <script src="https://js.stripe.com/v3/"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+    }
+
+    #card-element {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      padding: 10px 20px;
+      margin-top: 10px;
+    }
+
+    #status {
+      margin-top: 15px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Stripe Embedded Component Demo</h1>
+  <div id="payment-element"></div>
+  <button id="subscribe-btn">Subscribe</button>
+  <div id="status"></div>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const stripe = Stripe('pk_test_51RvWHkAECEHGAgkMffEDYFvQSAwvtz5tRGlcvp74Zu3lIqnZ7XPVBHXR9at8ZWLkpVGLZ9zKqtqPVenIiXzZFPzV00HfzCWbCE'); // Replace with your Stripe publishable key
+
+      const response = await fetch('http://localhost:3000/stripe/subscribe-advance', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userId: 'user-123',
+          email: 'test@example.com',
+          productIdInDb: 'prod-db-001',
+          productName: 'Pro Plan',
+          priceIdInDb: 'price-db-001',
+          amount: 200,
+          currency: 'usd',
+          interval: 'month',
+          subscriptionIdInDb: 'sub-db-001',
+          metadata: { plan: 'Pro Plan' }
+        }),
+      });
+
+      const { clientSecret } = await response.json();
+
+      const elements = stripe.elements({ clientSecret });
+      const paymentElement = elements.create('payment');
+      paymentElement.mount('#payment-element');
+
+      const subscribeBtn = document.getElementById('subscribe-btn');
+      subscribeBtn.addEventListener('click', async () => {
+        subscribeBtn.disabled = true; // ✅ disable button to prevent double-submit
+        document.getElementById('status').innerText = 'Processing...';
+
+        const { error } = await stripe.confirmPayment({
+          elements,
+          confirmParams: {
+            return_url: 'https://example.com/success',
+          },
+        });
+
+        if (error) {
+          document.getElementById('status').innerText = error.message;
+          subscribeBtn.disabled = false; // Re-enable if there was an error
+        }
+      });
+    });
+
+  </script>
+</body>
+
+</html>
