@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import Stripe from 'stripe';
 import { ConfigService } from '@nestjs/config';
+import { EventEmitter2 } from '@nestjs/event-emitter';
 
 type SubscriptionType = 'default' | 'redirect' | 'embedded' | 'embedded_component';
 
@@ -18,7 +19,11 @@ export class StripeService {
   private readonly logger = new Logger(StripeService.name);
   private stripe: Stripe;
 
-  constructor(private configService: ConfigService) {
+  constructor(
+    private configService: ConfigService,
+    private readonly eventEmitter: EventEmitter2
+  ) {
+
     const apiKey = this.configService.get<string>('STRIPE_API_KEY');
     if (!apiKey) {
       throw new Error('Stripe API key is not configured!');
@@ -121,13 +126,67 @@ export class StripeService {
 
   /**
    * Handles incoming Stripe webhook events.
-   * Verifies the event signature, parses the payload,
-   * and processes relevant Stripe events.
-   *
-   * @param signature - Stripe-Signature header from the incoming request.
-   * @param payload - Raw request body (Buffer) needed for signature verification.
-   * @throws Error if the webhook secret is missing or signature verification fails.
-   * @returns An acknowledgment object to Stripe.
+   * 
+   * - Verifies the signature with Stripe's secret.
+   * - Parses the raw payload into a Stripe.Event object.
+   * - Emits application-level events for downstream listeners.
+   * 
+   * @param signature Stripe-Signature header from the incoming request.
+   * @param payload Raw request body (Buffer), required for verification.
+   * @returns {Object} An acknowledgment object sent back to Stripe.
+   * 
+   * @throws {Error} If the webhook secret is missing or signature verification fails.
+   * 
+   * Example emitted events (prefixed with `stripe.`):
+   * 
+   * - **Account Events** → lifecycle updates related to connected accounts:
+   *   - `stripe.account.updated` → account details were updated.
+   *   - `stripe.account.application.authorized` → an application was authorized to access the account.
+   *   - `stripe.account.application.deauthorized` → an application’s access was revoked.
+   * 
+   * - **Balance Events** → updates regarding available balance:
+   *   - `stripe.balance.available` → new funds are available to withdraw.
+   * 
+   * - **Charge Events** → lifecycle of a payment charge:
+   *   - `stripe.charge.captured` → a charge was successfully captured.
+   *   - `stripe.charge.expired` → a charge authorization expired.
+   *   - `stripe.charge.failed` → a charge attempt failed.
+   *   - `stripe.charge.pending` → a charge is still pending.
+   *   - `stripe.charge.refunded` → a charge was refunded (partial or full).
+   *   - `stripe.charge.succeeded` → a charge was successfully paid.
+   *   - `stripe.charge.updated` → details of a charge were updated.
+   * 
+   * - **Customer Events** → lifecycle of a customer object:
+   *   - `stripe.customer.created` → a new customer was created.
+   *   - `stripe.customer.deleted` → a customer was deleted.
+   *   - `stripe.customer.updated` → customer details were updated.
+   *   - `stripe.customer.source.created` → a new payment source was added.
+   *   - `stripe.customer.source.deleted` → a payment source was removed.
+   * 
+   * - **Payment Method Events** → lifecycle of saved payment methods:
+   *   - `stripe.payment_method.attached` → a payment method was attached to a customer.
+   *   - `stripe.payment_method.detached` → a payment method was detached from a customer.
+   *   - `stripe.payment_method.automatically_updated` → Stripe automatically updated card details (e.g., exp date).
+   *   - `stripe.payment_method.updated` → a payment method was manually updated.
+   * 
+   * - **PaymentIntent Events** → status changes for payment intents:
+   *   - `stripe.payment_intent.amount_capturable_updated` → the capturable amount was updated.
+   *   - `stripe.payment_intent.canceled` → a payment intent was canceled.
+   *   - `stripe.payment_intent.created` → a new payment intent was created.
+   *   - `stripe.payment_intent.payment_failed` → the payment attempt failed.
+   *   - `stripe.payment_intent.succeeded` → the payment was successful.
+   * 
+   * - **Subscription Events** → lifecycle of customer subscriptions:
+   *   - `stripe.customer.subscription.created` → a new subscription was created.
+   *   - `stripe.customer.subscription.deleted` → a subscription was canceled.
+   *   - `stripe.customer.subscription.updated` → a subscription was updated (plan, status, etc.).
+   * 
+   * - **Invoice Events** → lifecycle of invoices:
+   *   - `stripe.invoice.created` → an invoice was created.
+   *   - `stripe.invoice.finalized` → an invoice was finalized and locked.
+   *   - `stripe.invoice.paid` → an invoice was successfully paid.
+   *   - `stripe.invoice.payment_failed` → payment for an invoice failed.
+   *   - `stripe.invoice.updated` → invoice details were updated.
    */
   async handleWebhook(signature: string, payload: Buffer) {
     const endpointSecret = this.configService.get<string>(
@@ -202,10 +261,8 @@ export class StripeService {
 
     // Emit event if supported, otherwise log warning
     if (supportedEvents.has(event.type)) {
-      console.log(event.type)
-      console.dir(event.data)
       // use event
-      // this.eventEmitter.emit(`stripe.${event.type}`, event);
+      this.eventEmitter.emit(`stripe.${event.type}`, event);
     } else {
       this.logger.warn(`Unhandled Stripe event type: ${event.type}`);
     }

@@ -4,6 +4,7 @@ import { AppService } from './app.service';
 import { StripeModule } from './stripe/stripe.module';
 import { ConfigModule } from '@nestjs/config';
 import { HegModule } from './heg/heg.module';
+import { EventsModule } from './services/event/event.module';
 
 @Module({
   imports: [
@@ -13,8 +14,9 @@ import { HegModule } from './heg/heg.module';
     }),
     StripeModule,
     HegModule,
+    EventsModule
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }
