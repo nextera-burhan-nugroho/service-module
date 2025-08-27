@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import Stripe from 'stripe';
 import { ConfigService } from '@nestjs/config';
 
@@ -15,6 +15,7 @@ interface SubscribeOptions {
 }
 @Injectable()
 export class StripeService {
+  private readonly logger = new Logger(StripeService.name);
   private stripe: Stripe;
 
   constructor(private configService: ConfigService) {
@@ -61,14 +62,62 @@ export class StripeService {
       }
     }
 
+    // Convert amount to smallest currency unit (cents) and ensure it's an integer
+    const amountInCents = this.convertToSmallestCurrencyUnit(amount, currency);
+
     return this.stripe.paymentIntents.create({
-      amount,
+      amount: amountInCents,
       currency,
       description,
       metadata: filteredMetadata,
       automatic_payment_methods: { enabled: true },
     });
   }
+
+
+  /**
+   * Cancel a Stripe PaymentIntent if it's still pending.
+   * Also updates local payment record.
+   *
+   * @param paymentIntentId Stripe PaymentIntent ID
+   * @param reason Optional cancellation reason
+   */
+  async cancelPaymentIntent(
+    paymentIntentId: string,
+    reason: Stripe.PaymentIntentCancelParams.CancellationReason = 'abandoned',
+  ) {
+
+    const paymentIntent = await this.stripe.paymentIntents.retrieve(paymentIntentId);
+
+    // Check if the PaymentIntent can be cancelled
+    if (!this.canCancelPaymentIntent(paymentIntent)) {
+      this.logger.warn(
+        `PaymentIntent ${paymentIntentId} cannot be cancelled. Current status: ${paymentIntent.status}`
+      );
+      return null;
+    }
+
+    return await this.stripe.paymentIntents.cancel(
+      paymentIntentId,
+      { cancellation_reason: reason }
+    );
+  }
+
+
+  /**
+   * Check if a PaymentIntent can be cancelled based on its current status
+   */
+  private canCancelPaymentIntent(paymentIntent: Stripe.PaymentIntent): boolean {
+    const cancellableStatuses: Stripe.PaymentIntent.Status[] = [
+      'requires_payment_method',
+      'requires_confirmation',
+      'requires_action',
+      'processing'
+    ];
+
+    return cancellableStatuses.includes(paymentIntent.status);
+  }
+
 
   /**
    * Handles incoming Stripe webhook events.
@@ -99,22 +148,70 @@ export class StripeService {
       throw new Error(`Webhook signature verification failed: ${err.message}`);
     }
 
-    // Handle different event types
-    switch (event.type) {
-      case 'payment_intent.succeeded':
-        console.dir(event);
-        console.log('PaymentIntent was successful!');
-        break;
-      case 'invoice.payment_succeeded':
-        console.log('Invoice payment succeeded!');
-        break;
-      case 'customer.subscription.deleted':
-        console.log('Subscription cancelled!');
-        break;
-    }
+    // Define supported event types
+    const supportedEvents = new Set([
+      // Account Events
+      'account.updated',
+      'account.application.authorized',
+      'account.application.deauthorized',
 
+      // Balance Events
+      'balance.available',
+
+      // Charge Events
+      'charge.captured',
+      'charge.expired',
+      'charge.failed',
+      'charge.pending',
+      'charge.refunded',
+      'charge.succeeded',
+      'charge.updated',
+
+      // Customer Events
+      'customer.created',
+      'customer.deleted',
+      'customer.updated',
+      'customer.source.created',
+      'customer.source.deleted',
+
+      // Payment Method Events
+      'payment_method.attached',
+      'payment_method.detached',
+      'payment_method.automatically_updated',
+      'payment_method.updated',
+
+      // PaymentIntent Events
+      'payment_intent.amount_capturable_updated',
+      'payment_intent.canceled',
+      'payment_intent.created',
+      'payment_intent.payment_failed',
+      'payment_intent.succeeded',
+
+      // Subscription Events
+      'customer.subscription.created',
+      'customer.subscription.deleted',
+      'customer.subscription.updated',
+
+      // Invoice Events
+      'invoice.created',
+      'invoice.finalized',
+      'invoice.paid',
+      'invoice.payment_failed',
+      'invoice.updated'
+    ]);
+
+    // Emit event if supported, otherwise log warning
+    if (supportedEvents.has(event.type)) {
+      console.log(event.type)
+      console.dir(event.data)
+      // use event
+      // this.eventEmitter.emit(`stripe.${event.type}`, event);
+    } else {
+      this.logger.warn(`Unhandled Stripe event type: ${event.type}`);
+    }
     return { received: true };
   }
+
 
   /** ==================== PRODUCT ==================== */
 
@@ -131,6 +228,7 @@ export class StripeService {
       },
     });
   }
+
 
   /** ==================== PRICE ==================== */
 
@@ -160,6 +258,7 @@ export class StripeService {
     });
   }
 
+
   /** ==================== CUSTOMER ==================== */
 
   /**
@@ -183,6 +282,7 @@ export class StripeService {
   async getCustomer(customerId: string) {
     return await this.stripe.customers.retrieve(customerId);
   }
+
 
   /** ==================== SUBSCRIPTION ==================== */
 
@@ -366,5 +466,31 @@ export class StripeService {
         priceId: priceIdInDb,
       },
     });
+  }
+
+  /**
+   * Convert amount to smallest currency unit based on currency
+   * Most currencies use 2 decimal places (cents), but some use 0 or 3
+   */
+  private convertToSmallestCurrencyUnit(amount: number, currency: string): number {
+    const currencyUpperCase = currency.toUpperCase();
+
+    // Zero decimal currencies (already in smallest unit)
+    const zeroDecimalCurrencies = [
+      'BIF', 'CLP', 'DJF', 'GNF', 'IDR', 'JPY', 'KMF', 'KRW', 'MGA',
+      'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF'
+    ];
+
+    // Three decimal currencies (multiply by 1000)
+    const threeDecimalCurrencies = ['BHD', 'JOD', 'KWD', 'OMR', 'TND'];
+
+    if (zeroDecimalCurrencies.includes(currencyUpperCase)) {
+      return Math.round(amount);
+    } else if (threeDecimalCurrencies.includes(currencyUpperCase)) {
+      return Math.round(amount * 1000);
+    } else {
+      // Most currencies use 2 decimal places (multiply by 100)
+      return Math.round(amount * 100);
+    }
   }
 }
