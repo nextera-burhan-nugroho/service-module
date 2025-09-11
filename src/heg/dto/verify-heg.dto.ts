@@ -2,23 +2,23 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsInt, IsObject, IsOptional, IsString, Max, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 import type { HegRouting, HegVerifyPriceRequest } from '../heg.interface';
-import { HegTripType } from '../heg.interface';
+import { EnumHegTripType } from '../heg.enum';
 
 export class VerifyPriceRequestDto implements HegVerifyPriceRequest {
     @ApiProperty({
         description: 'Trip type: 1 = ONE WAY, 2 = ROUND TRIP',
-        enum: HegTripType,
-        example: HegTripType.ONE_WAY,
+        enum: EnumHegTripType,
+        example: EnumHegTripType.ONE_WAY,
     })
-    @IsEnum(HegTripType)
-    tripType: HegTripType;
+    @IsEnum(EnumHegTripType)
+    tripType: EnumHegTripType;
 
-    @ApiProperty({
-        description: 'Unique session id from verify routing result',
-        example: 'abcd1234-session-id',
-    })
-    @IsString()
-    sessionId: string;
+    // @ApiProperty({
+    //     description: 'Unique session id from verify routing result',
+    //     example: 'abcd1234-session-id',
+    // })
+    // @IsString()
+    // sessionId: string;
 
     @ApiProperty({
         description: 'Routing object returned from flight search',

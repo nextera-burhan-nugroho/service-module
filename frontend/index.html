@@ -4,7 +4,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Stripe Payment Demo - All Methods</title>
+  <title>Stripe Payment Demo - Dynamic Client Secret</title>
   <script src="https://js.stripe.com/v3/"></script>
   <style>
     body {
@@ -28,17 +28,28 @@
       margin-top: 15px;
       font-weight: bold;
     }
+
+    #amount-display {
+      margin: 10px 0;
+      font-size: 18px;
+      color: green;
+    }
   </style>
 </head>
 
 <body>
-  <h1>Stripe Payment Test (All Methods)</h1>
+  <h1>Stripe Payment Test (Dynamic Secret & Amount)</h1>
 
+  <!-- Input clientSecret -->
   <div class="form-group">
-    <label>Amount (USD cents):</label>
-    <input type="number" id="amount" value="5000" />
+    <label>Client Secret:</label>
+    <input type="text" id="clientSecret" placeholder="Enter or fetch from backend" />
   </div>
 
+  <!-- Display amount -->
+  <div id="amount-display"></div>
+
+  <!-- Payment Element -->
   <div id="payment-element"></div>
 
   <button id="pay-btn">Pay Now</button>
@@ -50,29 +61,26 @@
     let elements;
     let clientSecret;
 
+    // Initialize Payment Element
     async function initialize() {
-      const amount = document.getElementById('amount').value;
+      clientSecret = document.getElementById('clientSecret').value;
 
-      // 1. Create payment intent from backend
-      const res = await fetch('http://localhost:3000/stripe/payment-intent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: parseInt(amount), currency: 'usd', paymentId: 'ID123', paymentCategory: 'hotel', userId: 'c07dc56a-0980-4e22-9a12-1ca5042f59fd', description: 'payment for hotel' })
-      });
-
-      const data = await res.json();
-      if (!data.client_secret) {
-        throw new Error('No client secret from backend');
+      if (!clientSecret) {
+        document.getElementById('status').textContent = '❌ Please enter a Client Secret';
+        return;
       }
 
-      clientSecret = data.client_secret;
 
-      // 2. Create Payment Element
+      // Setup payment element
       elements = stripe.elements({ clientSecret });
+      // Show formatted amount
       const paymentElement = elements.create("payment");
+      console.log(elements.total)
+      document.getElementById('amount-display').textContent = `Amount to pay: $${(1 / 100).toFixed(2)}`;
       paymentElement.mount("#payment-element");
     }
 
+    // Handle Pay Now click
     document.getElementById('pay-btn').addEventListener('click', async () => {
       document.getElementById('status').textContent = 'Processing payment...';
 
@@ -90,9 +98,9 @@
       }
     });
 
-    initialize().catch(err => {
-      document.getElementById('status').textContent = 'Error: ' + err.message;
-    });
+    // Initialize when inputs change
+    document.getElementById('clientSecret').addEventListener('blur', initialize);
+    document.getElementById('amount').addEventListener('blur', initialize);
   </script>
 </body>
 

@@ -4,6 +4,8 @@
  * ===============================
  */
 
+import { EnumHegBaggageType, EnumHegCabinClass, EnumHegChangesType, EnumHegGender, EnumHegOrderStatus, EnumHegPassengerType, EnumHegRuleStatus, EnumHegSsrApplyType, EnumHegSsrType, EnumHegTripType, EnumSsrCode } from "./heg.enum";
+
 export interface HegBaseResponse {
     status: string; // "200" / error code
     msg: string;    // success / error message
@@ -16,7 +18,7 @@ export interface HegBaseResponse {
  */
 
 export interface FlightSearch {
-    tripType: string;
+    tripType: EnumHegTripType;
     fromDate: string;
     retDate?: string;
     cabinClass: string;
@@ -41,8 +43,11 @@ export interface HegRouting {
 }
 
 export interface HegSegment {
+    tripType: EnumHegTripType;
     segmentNo: number;
     flightNo: string;
+    airlineName: string;
+    airlineLogo: string;
     aircraft?: string;
     depCity: string;
     depAirport: string;
@@ -53,9 +58,9 @@ export interface HegSegment {
     arrTerminal?: string;
     arrTime: string;
     duration: number;
-    cabinClass: HegCabinClass;
+    cabinClass: EnumHegCabinClass;
     cabin: string;
-    fareBasis: string;
+    fareBasis?: string;
 }
 
 export interface HegPriceInfo {
@@ -77,48 +82,48 @@ export interface HegTicketPriceInfo extends HegPriceInfo { }
  */
 
 export interface HegRule {
-    baggageRules: HegBaggageRule[];
-    changesRules: HegChangesRule[];
-    refundRules: HegRefundRule[];
+    baggageRule?: HegBaggageRule[];
+    changesRule?: HegChangesRule[];
+    refundRule?: HegRefundRule[];
 }
 
 export interface HegBaggageRule {
     segmentNo: number;
-    baggageType: HegBaggageType;
-    passengerType: HegPassengerType;
+    baggageType: EnumHegBaggageType;
+    passengerType: EnumHegPassengerType;
     baggagePiece: number;
     baggageWeight: number;
 }
 
 export interface HegChangesRule {
-    passengerType: HegPassengerType;
-    changesType: number;
-    changesStatus: HegRuleStatus;
+    passengerType: EnumHegPassengerType;
+    changesType?: EnumHegChangesType;
+    changesStatus?: EnumHegRuleStatus;
     changesFee?: number;
     currency: string;
-    revNoShow: HegRuleStatus;
-    revNoShowCondition: number;
-    revNoShowFee: number;
-    changesRemark: string;
-    useCondition: number;
+    revNoShow?: EnumHegRuleStatus;
+    revNoShowCondition?: number;
+    revNoShowFee?: number;
+    changesRemark?: string;
+    useCondition?: number;
     conditionList?: HegCondition[];
 }
 
 export interface HegRefundRule {
-    passengerType: HegPassengerType;
+    passengerType: EnumHegPassengerType;
     refundType: number;
-    refundStatus: HegRuleStatus;
+    refundStatus: EnumHegRuleStatus;
     refundFee?: number;
     currency: string;
-    revNoShow: HegRuleStatus;
-    revNoShowCondition: number;
-    revNoShowFee: number;
-    useCondition: number;
+    revNoShow?: EnumHegRuleStatus;
+    revNoShowCondition?: number;
+    revNoShowFee?: number;
+    useCondition?: number;
     conditionList?: HegCondition[];
 }
 
 export interface HegCondition {
-    status: HegRuleStatus;
+    status: EnumHegRuleStatus;
     endMinute: number;
     amount?: number;
 }
@@ -130,7 +135,8 @@ export interface HegCondition {
  */
 
 export interface HegVerifyPriceRequest {
-    tripType: HegTripType;
+    data: string;
+    tripType: EnumHegTripType;
     routing: HegRouting;
     adultNum: number;
     childNum: number;
@@ -149,7 +155,7 @@ export interface HegVerifyPriceResponse extends HegBaseResponse {
  */
 
 export interface HegBookingRequest {
-    tripType: HegTripType;
+    tripType: EnumHegTripType;
     sessionId: string;
     data: string;
     passengers: HegPassenger[];
@@ -196,7 +202,7 @@ export interface HegQueryOrderResponse extends HegBaseResponse {
 
 export interface HegOrderDetails {
     orderId: string;
-    status: HegOrderStatus;
+    status: EnumHegOrderStatus;
     segments: HegSegment[];
     ticketDetails: HegTicketDetails[];
     passengers: HegPassenger[];
@@ -244,10 +250,10 @@ export interface HegBaggageSsrs {
 
 export interface HegBaggageSsr {
     ssrCode: string;
-    applyType: HegSsrApplyType;
+    applyType: EnumHegSsrApplyType;
     name: string;
     code: string;
-    type: HegSsrType;
+    type: EnumHegSsrType;
     weight: number;
     piece: number;
     unit: string;
@@ -262,9 +268,9 @@ export interface HegSeatSsrs {
 
 export interface HegSeatSsr {
     ssrCode: string;
-    applyType: HegSsrApplyType;
+    applyType: EnumHegSsrApplyType;
     name: string;
-    type: HegSsrType;
+    type: EnumHegSsrType;
     code: string;
     rowNo: string;
     colNo: string;
@@ -277,7 +283,7 @@ export interface HegSeatSsr {
     nearLavatory: number;
     nearWindow: number;
     overWing: number;
-    allowChild: number;
+    allowChildSelected: number;
     withInfant: number;
 }
 
@@ -289,8 +295,8 @@ export interface HegSeatSsr {
 
 export interface HegPassenger {
     passengerNo?: number;
-    passengerType: HegPassengerType;
-    gender: HegGender;
+    passengerType: EnumHegPassengerType;
+    gender: EnumHegGender;
     firstName: string;
     lastName: string;
     dateOfBirth: string;
@@ -315,63 +321,10 @@ export interface HegPassengerAuxiliary {
 }
 
 export interface HegAuxiliaryCode {
-    ssrCode: string;
+    ssrCode: EnumSsrCode;
 }
 
-/**
- * ===============================
- * Enums
- * ===============================
- */
-
-export enum HegOrderStatus {
-    CREATED_UNPAID = "1",
-    PAID_NO_TICKETS = "2",
-    PARTIALLY_ISSUED = "3",
-    FULLY_ISSUED = "4",
-    CANCELLED = "5"
-}
-
-export enum HegPassengerType {
-    ADULT = "1",
-    CHILD = "2",
-    INFANT = "3"
-}
-
-export enum HegGender {
-    MALE = "1",
-    FEMALE = "2"
-}
-
-export enum HegCabinClass {
-    ECONOMY = "Y",
-    BUSINESS = "C",
-    FIRST = "F"
-}
-
-export enum HegTripType {
-    ONE_WAY = "1",
-    ROUND_TRIP = "2"
-}
-
-export enum HegBaggageType {
-    CHECK_IN = "1",
-    CABIN = "2"
-}
-
-export enum HegSsrType {
-    BAGGAGE = "0",
-    SEAT = "1"
-}
-
-export enum HegSsrApplyType {
-    PRE_SALE = "1",
-    AFTER_SALE = "2"
-}
-
-export enum HegRuleStatus {
-    UNCHANGEABLE = "T",
-    CONDITIONAL = "H",
-    FREE = "F",
-    AIRLINE_RULES = "E"
+export interface SsrCode {
+    code: string;
+    description: string;
 }

@@ -1,15 +1,16 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsEnum, IsString, IsOptional, IsDateString } from 'class-validator';
-import { HegGender, HegPassenger, HegPassengerType } from '../heg.interface';
+import { HegPassenger } from '../heg.interface';
+import { EnumHegGender, EnumHegPassengerType } from '../heg.enum';
 
 export class HegPassengerDto implements HegPassenger {
-    @ApiProperty({ enum: HegPassengerType })
-    @IsEnum(HegPassengerType)
-    passengerType: HegPassengerType;
+    @ApiProperty({ enum: EnumHegPassengerType })
+    @IsEnum(EnumHegPassengerType)
+    passengerType: EnumHegPassengerType;
 
-    @ApiProperty({ enum: HegGender })
-    @IsEnum(HegGender)
-    gender: HegGender;
+    @ApiProperty({ enum: EnumHegGender })
+    @IsEnum(EnumHegGender)
+    gender: EnumHegGender;
 
     @ApiProperty()
     @IsString()

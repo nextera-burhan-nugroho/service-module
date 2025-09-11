@@ -1,16 +1,17 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { IsString, IsOptional, IsEnum, IsDateString, IsNumber, Min } from 'class-validator';
 import { Type } from 'class-transformer';
-import { FlightSearch, HegCabinClass, HegTripType } from '../heg.interface';
+import { EnumHegCabinClass, EnumHegTripType } from '../heg.enum';
+import { FlightSearch } from '../heg.interface';
 
 export class SearchFlightDto implements FlightSearch {
     @ApiProperty({
-        enum: HegTripType,
+        enum: EnumHegTripType,
         description: 'Trip type: 1 = ONE WAY, 2 = ROUND TRIP',
-        example: HegTripType.ONE_WAY,
+        example: EnumHegTripType.ONE_WAY,
     })
-    @IsEnum(HegTripType)
-    tripType: HegTripType;
+    @IsEnum(EnumHegTripType)
+    tripType: EnumHegTripType;
 
     @ApiProperty({
         description: 'Departure date (YYYY-MM-DD)',
@@ -28,12 +29,12 @@ export class SearchFlightDto implements FlightSearch {
     retDate?: string;
 
     @ApiProperty({
-        enum: HegCabinClass,
+        enum: EnumHegCabinClass,
         description: 'Cabin class: Y = Economy, C = Business, F = First',
-        example: HegCabinClass.ECONOMY,
+        example: EnumHegCabinClass.ECONOMY,
     })
-    @IsEnum(HegCabinClass)
-    cabinClass: HegCabinClass;
+    @IsEnum(EnumHegCabinClass)
+    cabinClass: EnumHegCabinClass;
 
     @ApiProperty({
         description: 'Number of adult passengers',

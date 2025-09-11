@@ -14,52 +14,11 @@ import {
     HegSsrRequest,
     HegSsrResponse,
     HegVerifyPriceRequest,
-    HegVerifyPriceResponse
+    HegVerifyPriceResponse,
+    SsrCode
 } from './heg.interface';
-
-/**
- * HEG API Status Codes
- */
-enum HegStatusCode {
-    SUCCESS = 200,
-    SYSTEM_ERROR = 500,
-    BAD_REQUEST = 201,
-    PROGRAM_EXCEPTION = 203,
-    NO_QUOTATION = 101,
-    PRICE_VERIFY_FAILURE = 105,
-    DUPLICATE_ORDER = 106,
-    EMPTY_DATA = 107,
-    NONEXISTENT_DATA = 108,
-    AUXILIARY_ORDER_FAILED = 109,
-    NO_AUXILIARY_INFO = 111,
-    ORDER_NOT_EXIST = 112,
-    INCOMPLETE_PASSENGER_INFO = 113,
-    EMPTY_ORDER_NUMBER = 114,
-    ORDER_CANCELLED = 115,
-    ORDER_PAID = 116
-}
-
-/**
- * Maps HEG status codes to error messages and HTTP statuses
- */
-const HEG_STATUS_MAP = {
-    [HegStatusCode.SUCCESS]: { message: 'Success', httpStatus: HttpStatus.OK },
-    [HegStatusCode.SYSTEM_ERROR]: { message: 'System Error', httpStatus: HttpStatus.INTERNAL_SERVER_ERROR },
-    [HegStatusCode.BAD_REQUEST]: { message: 'Bad Request', httpStatus: HttpStatus.BAD_REQUEST },
-    [HegStatusCode.PROGRAM_EXCEPTION]: { message: 'Program exception', httpStatus: HttpStatus.INTERNAL_SERVER_ERROR },
-    [HegStatusCode.NO_QUOTATION]: { message: 'No quotation for this flight', httpStatus: HttpStatus.NOT_FOUND },
-    [HegStatusCode.PRICE_VERIFY_FAILURE]: { message: 'Price verify failure', httpStatus: HttpStatus.BAD_REQUEST },
-    [HegStatusCode.DUPLICATE_ORDER]: { message: 'Duplicate order', httpStatus: HttpStatus.CONFLICT },
-    [HegStatusCode.EMPTY_DATA]: { message: 'Data cannot be empty', httpStatus: HttpStatus.BAD_REQUEST },
-    [HegStatusCode.NONEXISTENT_DATA]: { message: 'Nonexistent data', httpStatus: HttpStatus.NOT_FOUND },
-    [HegStatusCode.AUXILIARY_ORDER_FAILED]: { message: 'Auxiliary order failed', httpStatus: HttpStatus.BAD_REQUEST },
-    [HegStatusCode.NO_AUXILIARY_INFO]: { message: 'No auxiliary information', httpStatus: HttpStatus.NOT_FOUND },
-    [HegStatusCode.ORDER_NOT_EXIST]: { message: 'Order does not exist', httpStatus: HttpStatus.NOT_FOUND },
-    [HegStatusCode.INCOMPLETE_PASSENGER_INFO]: { message: 'Incomplete passenger info', httpStatus: HttpStatus.BAD_REQUEST },
-    [HegStatusCode.EMPTY_ORDER_NUMBER]: { message: 'Order number cannot be empty', httpStatus: HttpStatus.BAD_REQUEST },
-    [HegStatusCode.ORDER_CANCELLED]: { message: 'Order has been cancelled', httpStatus: HttpStatus.GONE },
-    [HegStatusCode.ORDER_PAID]: { message: 'Order has been paid', httpStatus: HttpStatus.CONFLICT }
-};
+import { EnumHegBaggageType, EnumHegCabinClass, EnumHegChangesType, EnumHegGender, EnumHegOrderStatus, EnumHegPassengerType, EnumHegRuleStatus, EnumHegSsrApplyType, EnumHegSsrType, EnumHegTripType, EnumSsrCode, HEG_STATUS_MAP, HegStatusCode } from './heg.enum';
+import { SsrCodeDescriptions } from './heg.util';
 
 @Injectable()
 export class HegService {
@@ -78,12 +37,50 @@ export class HegService {
         this.accessSecretKey = this.configService.get<string>('HEG_SECRET_KEY') ?? (() => { throw new Error('HEG secret key not configured!'); })();
     }
 
+    /**
+     * Searches SSR codes (Special Service Requests) by code or description.
+     * If no query is provided, all SSR codes are returned.
+     * 
+     * @param query - (Optional) String to search in SSR code or description
+     * @returns Array of objects with `code` and `description`
+     */
+    searchSsrCodes(query?: string): SsrCode[] {
+        const lowerQuery = query?.toLowerCase() || '';
+
+        return Object.values(EnumSsrCode)
+            .map(code => ({
+                code,
+                description: SsrCodeDescriptions[code],
+            }))
+            .filter(
+                item =>
+                    !lowerQuery ||
+                    item.code.toLowerCase().includes(lowerQuery) ||
+                    item.description.toLowerCase().includes(lowerQuery),
+            );
+    }
+
     /** 
      * Search for available flights.
      * @param body Flight search payload
      */
     async searchFlight(body: FlightSearch): Promise<HegFlightSearchResponse> {
         return await this.sendHegRequest('/api/flight/searchFlight.do', body);
+    }
+
+    /**
+     * Dummy Verify flight price before booking.
+     * @param body Price verification payload
+     */
+    async verifyPriceDummy(body: HegVerifyPriceRequest): Promise<HegVerifyPriceResponse> {
+        const result: HegVerifyPriceResponse = {
+            status: '200',
+            msg: 'OK',
+            sessionId: '6266D4DD72157CE17DAEF02A0C3C07B8',
+            routing: body.routing,
+        }
+
+        return result
     }
 
     /**
@@ -95,11 +92,41 @@ export class HegService {
     }
 
     /**
+     * Dummy Create a new booking order.
+     * @param body Booking request payload
+     */
+    async dummyBooking(body: HegBookingRequest, verified: HegVerifyPriceResponse): Promise<HegBookingResponse> {
+        const result: HegBookingResponse = {
+            contact: body.contact,
+            msg: "OK",
+            status: "200",
+            orderId: "8934THNG98SDRTGKJ48ASD874FJHIJW3R",
+            passengers: body.passengers,
+            routing: verified.routing,
+            sessionId: "72AEB7600021641151B4396965082C17",
+            passengerAuxiliaries: body.passengerAuxiliaries
+        }
+        return result
+    }
+
+    /**
      * Create a new booking order.
      * @param body Booking request payload
      */
     async booking(body: HegBookingRequest): Promise<HegBookingResponse> {
         return await this.sendHegRequest('/api/order/saveOrder.do', body);
+    }
+
+    /**
+     * Dummy Pay function for an existing order.
+     * @param body Payment request payload
+     */
+    async dummyPay(body: HegPaymentRequest): Promise<HegPaymentResponse> {
+        return {
+            msg: "OK",
+            sessionId: "78234HVN387DLKSDFOISDF9823RNDFGKL2",
+            status: "200"
+        }
     }
 
     /**
@@ -114,8 +141,250 @@ export class HegService {
      * Query an order by its order ID.
      * @param body Query order payload
      */
+    async dummyQueryOrder(body: HegQueryOrderRequest): Promise<HegQueryOrderResponse> {
+        const dummyHegOrderDetails: HegQueryOrderResponse = {
+            msg: "OK",
+            status: "200",
+            orderDetails:
+            {
+                status: EnumHegOrderStatus.PAID_NO_TICKETS,
+                orderId: 'ORD20250925ABC',
+                segments: [
+                    {
+                        tripType: EnumHegTripType.ONE_WAY,
+                        segmentNo: 1,
+                        flightNo: 'QZ260',
+                        airlineName: 'QZ',
+                        airlineLogo: 'https://img.happyeasygo.com/w/static/images/air-logo/36/QZ.png',
+                        aircraft: 'Boeing 737',
+                        depCity: 'Jakarta',
+                        depAirport: 'CGK',
+                        depTerminal: 'Terminal 2',
+                        depTime: '2025-09-25T16:10:00',
+                        arrCity: 'Singapore',
+                        arrAirport: 'SIN',
+                        arrTerminal: 'Terminal 3',
+                        arrTime: '2025-09-25T19:00:00',
+                        duration: 170,
+                        cabinClass: EnumHegCabinClass.ECONOMY,
+                        cabin: 'Y',
+                        fareBasis: 'Y123'
+                    },
+                    {
+                        tripType: EnumHegTripType.ROUND_TRIP,
+                        segmentNo: 2,
+                        flightNo: 'QZ267',
+                        airlineName: 'QZ',
+                        airlineLogo: 'https://img.happyeasygo.com/w/static/images/air-logo/36/QZ.png',
+                        depCity: 'Singapore',
+                        depAirport: 'SIN',
+                        depTerminal: 'Terminal 3',
+                        depTime: '2025-09-30T12:00:00',
+                        arrCity: 'Jakarta',
+                        arrAirport: 'CGK',
+                        arrTerminal: 'Terminal 2',
+                        arrTime: '2025-09-30T12:50:00',
+                        duration: 50,
+                        cabinClass: EnumHegCabinClass.ECONOMY,
+                        cabin: 'Y',
+                        fareBasis: 'Y123'
+                    }
+                ],
+                ticketDetails: [
+                    { itineraryNo: 1, segmentNo: 1, passengerNo: 1, ticketNo: 'TCKT001', pnrCode: 'PNR123' },
+                    { itineraryNo: 1, segmentNo: 1, passengerNo: 2, ticketNo: 'TCKT002', pnrCode: 'PNR123' },
+                    { itineraryNo: 1, segmentNo: 1, passengerNo: 3, ticketNo: 'TCKT003', pnrCode: 'PNR123' },
+                    { itineraryNo: 2, segmentNo: 2, passengerNo: 1, ticketNo: 'TCKT004', pnrCode: 'PNR123' },
+                    { itineraryNo: 2, segmentNo: 2, passengerNo: 2, ticketNo: 'TCKT005', pnrCode: 'PNR123' },
+                    { itineraryNo: 2, segmentNo: 2, passengerNo: 3, ticketNo: 'TCKT006', pnrCode: 'PNR123' },
+                ],
+                passengers: [
+                    {
+                        passengerType: EnumHegPassengerType.ADULT,
+                        gender: EnumHegGender.MALE,
+                        firstName: "Andi",
+                        lastName: "Saputra",
+                        dateOfBirth: "1992-08-15",
+                        passportNo: "B12345678",
+                        dateOfExpiry: "2032-08-15",
+                        nationality: "ID",
+                        cardIssuePlace: "Jakarta",
+                        email: "andi.saputra@example.com",
+                        mobile: "+628111234567"
+                    },
+                    {
+                        passengerType: EnumHegPassengerType.ADULT,
+                        gender: EnumHegGender.MALE,
+                        firstName: "wahtu",
+                        lastName: "Saputra",
+                        dateOfBirth: "1992-08-15",
+                        passportNo: "B12345678",
+                        dateOfExpiry: "2032-08-15",
+                        nationality: "ID",
+                        cardIssuePlace: "Jakarta",
+                        email: "andi.saputra@example.com",
+                        mobile: "+628111234567"
+                    },
+                    {
+                        passengerType: EnumHegPassengerType.CHILD,
+                        gender: EnumHegGender.FEMALE,
+                        firstName: "Sari",
+                        lastName: "Saputra",
+                        dateOfBirth: "1993-05-20",
+                        passportNo: "C98765432",
+                        dateOfExpiry: "2033-05-20",
+                        nationality: "ID",
+                        cardIssuePlace: "Jakarta",
+                        email: "sari.saputra@example.com",
+                        mobile: "+628111234568"
+                    }
+                ],
+                contact: {
+                    name: 'Andi Saputra',
+                    email: 'andi.saputra@example.com',
+                    mobile: '+628111234567'
+                },
+                rule: {
+                    baggageRule: [
+                        { segmentNo: 1, baggageType: EnumHegBaggageType.CABIN, passengerType: EnumHegPassengerType.ADULT, baggagePiece: 2, baggageWeight: 20 },
+                        { segmentNo: 1, baggageType: EnumHegBaggageType.CHECK_IN, passengerType: EnumHegPassengerType.CHILD, baggagePiece: 1, baggageWeight: 15 },
+                    ],
+                    changesRule: [
+                        {
+                            passengerType: EnumHegPassengerType.ADULT,
+                            changesType: EnumHegChangesType.PARTIAL_USED,
+                            changesStatus: EnumHegRuleStatus.AIRLINE_RULES,
+                            changesFee: 50,
+                            currency: 'SGD',
+                            revNoShow: EnumHegRuleStatus.AIRLINE_RULES,
+                            revNoShowCondition: 0,
+                            revNoShowFee: 0,
+                            changesRemark: 'Changes allowed with fee',
+                            useCondition: 1
+                        }
+                    ],
+                    refundRule: [
+                        {
+                            passengerType: EnumHegPassengerType.ADULT,
+                            refundType: 1,
+                            refundStatus: EnumHegRuleStatus.AIRLINE_RULES,
+                            currency: 'SGD',
+                            revNoShow: EnumHegRuleStatus.AIRLINE_RULES,
+                            revNoShowCondition: 0,
+                            revNoShowFee: 0,
+                            useCondition: 1
+                        }
+                    ]
+                },
+                prices: [
+                    { totalPrices: 448.71, currency: 'SGD' }
+                ]
+            }
+        };
+
+
+        return dummyHegOrderDetails
+    }
+
+    /**
+     * Query an order by its order ID.
+     * @param body Query order payload
+     */
     async queryOrder(body: HegQueryOrderRequest): Promise<HegQueryOrderResponse> {
         return await this.sendHegRequest('/api/order/queryOrderByOrderId.do', body);
+    }
+
+    /**
+     * Get SSR Dummy (Special Service Request) details.
+     * @param body SSR request payload
+     */
+    async getSsrDummy(body: HegSsrRequest): Promise<HegSsrResponse> {
+        const dummySsrResponse: HegSsrResponse = {
+            sessionId: 'ABC123456',
+            status: '200',
+            msg: 'OK',
+            baggageSsrsList: [
+                {
+                    flightNo: 'AI101',
+                    baggageSsrs: [
+                        {
+                            ssrCode: 'BAG20',
+                            applyType: EnumHegSsrApplyType.PRE_SALE, // Pre-sale
+                            name: '20KG Check-in Baggage',
+                            code: 'B20',
+                            type: EnumHegSsrType.BAGGAGE, // baggage
+                            weight: 20,
+                            piece: 1,
+                            unit: 'kg',
+                            amount: '30.00',
+                            currency: 'USD',
+                        },
+                        {
+                            ssrCode: 'BAG30',
+                            applyType: EnumHegSsrApplyType.PRE_SALE,
+                            name: '30KG Check-in Baggage',
+                            code: 'B30',
+                            type: EnumHegSsrType.BAGGAGE,
+                            weight: 30,
+                            piece: 1,
+                            unit: 'kg',
+                            amount: '40.00',
+                            currency: 'USD',
+                        },
+                    ],
+                },
+            ],
+            seatSsrsList: [
+                {
+                    flightNo: 'AI101',
+                    seatSsrs: [
+                        {
+                            ssrCode: 'SEAT12A',
+                            applyType: EnumHegSsrApplyType.PRE_SALE,
+                            name: 'Window Seat 12A',
+                            type: EnumHegSsrType.SEAT,
+                            code: 'S12A',
+                            rowNo: '12',
+                            colNo: 'A',
+                            deck: '1',
+                            amount: '15.00',
+                            currency: 'USD',
+                            status: 1,
+                            nearAisle: 2,
+                            nearExit: 2,
+                            nearLavatory: 2,
+                            nearWindow: 1,
+                            overWing: 2,
+                            allowChildSelected: 1,
+                            withInfant: 2,
+                        },
+                        {
+                            ssrCode: 'SEAT12B',
+                            applyType: EnumHegSsrApplyType.PRE_SALE,
+                            name: 'Middle Seat 12B',
+                            type: EnumHegSsrType.SEAT,
+                            code: 'S12B',
+                            rowNo: '12',
+                            colNo: 'B',
+                            deck: '1',
+                            amount: '10.00',
+                            currency: 'USD',
+                            status: 1,
+                            nearAisle: 2,
+                            nearExit: 2,
+                            nearLavatory: 2,
+                            nearWindow: 2,
+                            overWing: 2,
+                            allowChildSelected: 1,
+                            withInfant: 2,
+                        },
+                    ],
+                },
+            ],
+        };
+        // Simulate API delay
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        return dummySsrResponse
     }
 
     /**
@@ -134,6 +403,8 @@ export class HegService {
     private async sendHegRequest(pathUrl: string, body: Record<string, any>) {
         const requestBody = JSON.stringify(body);
         const token = this.generateToken(body);
+        this.logger.log(`HEG API request for ${pathUrl}`)
+
 
         try {
             const response = await this.httpService.axiosRef.post(

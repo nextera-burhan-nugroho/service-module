@@ -7,6 +7,7 @@ import { BookingRequestDto } from './dto/booking-heg.dto';
 import { PayRequestDto } from './dto/pay.dto';
 import { QueryOrderRequestDto } from './dto/query-order.dto';
 import { GetSsrRequestDto } from './dto/get-ssr.dto';
+import { EnumHegTripType } from './heg.enum';
 
 @ApiTags('HEG Flight')
 @Controller('heg')
@@ -16,13 +17,15 @@ export class HegController {
     @Get('search')
     @ApiQuery({
         name: 'tripType',
-        enum: ['1', '2'],
+        enum: [1, 2],
+        required: false,
         description: '1 = One Way, 2 = Round Trip',
-        example: '1',
+        example: 1,
     })
     @ApiQuery({
         name: 'fromDate',
         type: String,
+        required: false,
         description: 'Departure date (yyyy-MM-dd)',
         example: '2025-08-25',
     })
@@ -36,12 +39,14 @@ export class HegController {
     @ApiQuery({
         name: 'cabinClass',
         enum: ['Y', 'C', 'F'],
+        required: false,
         description: 'Y = Economy, C = Business, F = First Class',
         example: 'Y',
     })
     @ApiQuery({
         name: 'adultNum',
         type: Number,
+        required: false,
         description: 'Adult passengers (1–9)',
         example: 1,
     })
@@ -62,17 +67,19 @@ export class HegController {
     @ApiQuery({
         name: 'fromCity',
         type: String,
+        required: false,
         description: 'City code of origin',
         example: 'JKT',
     })
     @ApiQuery({
         name: 'toCity',
         type: String,
+        required: false,
         description: 'City code of destination',
         example: 'SIN',
     })
     async searchFlight(
-        @Query('tripType') tripType: string,
+        @Query('tripType') tripType: EnumHegTripType,
         @Query('fromDate') fromDate: string,
         @Query('retDate') retDate: string,
         @Query('cabinClass') cabinClass: string,
