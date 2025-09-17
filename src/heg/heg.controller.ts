@@ -1,5 +1,5 @@
 import { Controller, Get, Query, ParseIntPipe, Post, Body } from '@nestjs/common';
-import { ApiTags, ApiQuery } from '@nestjs/swagger';
+import { ApiTags, ApiQuery, ApiOperation, ApiBody, ApiResponse } from '@nestjs/swagger';
 import { HegService } from './heg.service';
 import { VerifyPriceRequestDto } from './dto/verify-heg.dto';
 import { HegBookingResponse, HegPaymentResponse, HegQueryOrderResponse, HegSsrResponse, HegVerifyPriceResponse } from './heg.interface';
@@ -117,12 +117,19 @@ export class HegController {
         return await this.hegService.pay(body);
     }
 
-    @Get('order')
+    @Post('order')
+    @ApiOperation({ summary: 'Query order details' })
+    @ApiBody({ type: QueryOrderRequestDto })
+    @ApiResponse({ status: 200, description: 'Order query result' })
     async order(@Body() body: QueryOrderRequestDto): Promise<HegQueryOrderResponse> {
         return await this.hegService.queryOrder(body);
     }
 
-    @Get('ssr')
+
+    @Post('ssr')
+    @ApiOperation({ summary: 'Get SSR details' })
+    @ApiBody({ type: GetSsrRequestDto })
+    @ApiResponse({ status: 200, description: 'SSR query result' })
     async ssr(@Body() body: GetSsrRequestDto): Promise<HegSsrResponse> {
         return await this.hegService.getSsr(body);
     }
