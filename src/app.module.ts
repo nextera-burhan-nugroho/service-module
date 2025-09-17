@@ -5,6 +5,7 @@ import { StripeModule } from './stripe/stripe.module';
 import { ConfigModule } from '@nestjs/config';
 import { HegModule } from './heg/heg.module';
 import { EventsModule } from './services/event/event.module';
+import { PdfModule } from './pdf/pdf.module';
 
 @Module({
   imports: [
@@ -14,7 +15,8 @@ import { EventsModule } from './services/event/event.module';
     }),
     StripeModule,
     HegModule,
-    EventsModule
+    EventsModule,
+    PdfModule
   ],
   controllers: [AppController],
   providers: [AppService],
